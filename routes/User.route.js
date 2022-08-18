@@ -54,8 +54,6 @@ route.post('/signUp', (req, res) => {
                         message:"user with the provided email is already registered."
                     })
                 }else{
-                    // try to create new user
-
                     // Password Handling
                     const saltRounds = 10;
                     bcrypt.hash(password, saltRounds)
@@ -98,49 +96,71 @@ route.post('/signUp', (req, res) => {
             })
             
             
-            (err, user) => {
-            if(err){
-                res.json({
-                    status:"failed",
-                    message: "error in finding user"
-                })
-            }else if(user){
-                res.json({
-                    status:"failed",
-                    message: "user already registered"
-                })
-            }else{
-                let newUser = new User({
-                    name: name,
-                    email: email,
-                    password: password,
-                    dateOfBirth: dateOfBirth
-                });
-                newUser.save((err, user) => {
-                    if(err){
-                        res.json({
-                            status:"failed",
-                            message: "error in saving user"
-                        })
-                    }else{
-                        res.json({
-                            status:"success",
-                            message: "user registered successfully"
-                        })
-                    }
-                } )
-            }
-        } )
-    }
-
-
-
-    res.send('signUp');
+        }
+    res.send('signUp success');
 } );
 
 // signIn
 route.post('/signIn', (req, res) => {
-    res.send('signIn');
+    let { email, password } = req.body;
+    email = email.trim();
+    password = password.trim();
+    if(email == "" || password == "") {
+        res.json({
+            status:"failed",
+            message: "Empty credintials supplied"
+        })
+    }else if(!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(email)) {
+        res.json({
+            status:"failed",
+            message: "Invalid email"
+        })
+    }else if(!/^[a-zA-Z0-9]*$/.test(password)) {
+        res.json({
+            status:"failed",
+            message: "Invalid password"
+        })
+    }else{
+        // check if user exists
+        User.find({email: email})
+            .then(result=>{
+                if(result.length){
+                    const hashedPassword = result[0].password;
+                    bcrypt.compare(password, hashedPassword)
+                        .then(result=>{
+                            if(result){
+                                res.json({
+                                    status:"success",
+                                    message:"user logged in successfully",
+                                    data:result
+                                })
+                            }else{
+                                res.json({
+                                    status:"failed",
+                                    message:"invalid credientials entered."
+                                })
+                            }
+                        }).catch(err=>{
+                            res.json({
+                                status:"failed",
+                                message:"an error occure while comparing password"
+                            })
+                        })
+                }else{
+                    res.json({
+                        status:"failed",
+                        message:"user not found"
+                    })
+                }
+            }).catch(err=>{
+                res.json({
+                    status:"failed",
+                    message:"an error occure while checking the existing user"
+                })
+            })
+
+    }
+    res.send('signIn successfull');
 } );
 
 // signOut
